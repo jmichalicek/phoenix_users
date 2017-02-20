@@ -2,7 +2,6 @@ defmodule Mix.Tasks.CreateUser do
   use Mix.Task
   import Mix.Ecto
 
-  # TODO: alias or otherwise access Repo and a User model dynamically
   # TODO: Allow specifying a specific changeset function to use 
   # TODO: Custom switches and aliases?  Dynamically determine switches and aliases
   # or dynamically prompt for required info like django create_user does?
@@ -12,7 +11,14 @@ defmodule Mix.Tasks.CreateUser do
   @aliases [f: :first_name, l: :last_name, e: :email, a: :is_active, p: :password]
   @shortdoc "Creates a User in the database"
   def run(args) do
-    ensure_started(Repo, [])
+    # Might be a better way, buyt this seems to work
+    # This lets a config specify a specific ecto repo to use
+    # otherwise grabs the first one specified in the phoenix app's config
+    # Should be able to do this for user model as well
+    repo = Application.get_env(:phoenix_users,
+                               :ecto_repo,
+                               Enum.at(Mix.Ecto.parse_repo(args), 0))
+    ensure_started(repo, [])
     #user = User.changeset(%{})
     {options, _, errors} = OptionParser.parse(args, switches: @switches, aliases: @aliases)
 
@@ -24,7 +30,7 @@ defmodule Mix.Tasks.CreateUser do
     if !list_empty?(errors) do
       print_errors(errors)
     else
-      create_user(options)
+      create_user(options, repo)
     end
   end
 
@@ -41,7 +47,7 @@ defmodule Mix.Tasks.CreateUser do
     IO.inspect(errors)
   end
 
-  def create_user(options) do
+  def create_user(options, repo) do
     # if not for the password/password confirmation we could just use
     # Enum.into(options)
     # the !options[:is_active] makes a default to true even if not specified
@@ -55,7 +61,7 @@ defmodule Mix.Tasks.CreateUser do
     }
     changeset = User.changeset(%User{}, params)
 
-    case Repo.insert(changeset) do
+    case repo.insert(changeset) do
       {:ok, user} ->
         IO.puts("Created user #{user.email}!")
       {:error, changeset} ->
