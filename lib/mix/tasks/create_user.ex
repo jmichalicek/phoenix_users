@@ -27,12 +27,12 @@ defmodule Mix.Tasks.CreateUser do
                          :model,
                          Application.get_env(:phoenix_users, :user_model))
     # TODO: Handle error returns with these
-    {:ok, user_model} = get_atom(user_model)
+    {:ok, user_model} = get_user_model_atom(user_model)
 
     changeset_function = Map.get(options,
                                  :changeset,
                                  Application.get_env(:phoenix_users, :create_user_changset, "changeset"))
-    {:ok, changeset_function} = get_atom(changeset_function)
+    {:ok, changeset_function} = get_changeset_function_atom(changeset_function)
     #user_model = Application.get_env(:phoenix_users, :user_model)
 
     #TODO: prompt for any needed data which was not passed on command line
@@ -52,14 +52,32 @@ defmodule Mix.Tasks.CreateUser do
   @doc """
   Take an atom or bitstring and return the atom representation and status.
   """
-  def get_atom(source) do
+  def get_user_model_atom(user_model) do
     cond do
-      is_bitstring(source) ->
-        {:ok, Module.concat(String.split(source, "."))}
-      is_atom(source) ->
-        {:ok, source}
+      is_bitstring(user_model) ->
+        # This can also work using String.to_atom() but requires
+        # testing to see if the string starts with Elixir. already
+        # and prepending that if it does not.
+        {:ok, Module.concat(String.split(user_model, "."))}
+      is_atom(user_model) ->
+        {:ok, user_model}
       true ->
-        {:error, source}
+        {:error, user_model}
+    end
+  end
+
+  @doc """
+  Takes the changeset function name as a parameter and returns
+  the appropriate atom for it for use in apply/3
+  """
+  def get_changeset_function_atom(changeset_function) do
+    cond do
+      is_bitstring(changeset_function) ->
+        {:ok, String.to_atom(changeset_function)}
+      is_atom(changset_function) ->
+        {:ok, changeset_function)
+      true ->
+        {:error, changeset_function}
     end
   end
 
