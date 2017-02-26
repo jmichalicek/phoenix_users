@@ -30,6 +30,13 @@ defmodule Mix.Tasks.CreateUser do
     # TODO: Handle error returns with these
     {:ok, user_model} = get_user_model_atom(user_model)
 
+    required = get_required_fields(user_model)
+
+    for required_field <- required do
+      x = IO.gets "write something"
+      options = options ++ [{String.to_atom(required_field), x}]
+    end
+
     changeset_function = Keyword.get(options,
                                      :changeset,
                                      Application.get_env(:phoenix_users, :create_user_changset, "changeset"))
@@ -50,6 +57,17 @@ defmodule Mix.Tasks.CreateUser do
     end
   end
 
+  def get_required_fields(user_model) do 
+    # prompt for any required data which is not already passed in
+    # TODO: is it possible to detecth required fields from the schema rather than
+    # making the developer specify them on the model?
+    try do
+      user_model.required_fields
+    rescue
+      UndefinedFunctionError ->
+        []
+    end
+  end
   @doc """
   Take an atom or bitstring and return the atom representation and status.
   """
