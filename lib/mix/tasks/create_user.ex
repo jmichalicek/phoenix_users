@@ -19,19 +19,20 @@ defmodule Mix.Tasks.CreateUser do
     repo = Application.get_env(:phoenix_users,
                                :ecto_repo,
                                Enum.at(Mix.Ecto.parse_repo(args), 0))
+    # Seem to need both of these, ensure_repo and ensure_started
+    ensure_repo(repo, [])
     ensure_started(repo, [])
-    #user = User.changeset(%{})
     {options, _, errors} = OptionParser.parse(args, switches: @switches, aliases: @aliases)
 
-    user_model = Map.get(options,
-                         :model,
-                         Application.get_env(:phoenix_users, :user_model))
+    user_model = Keyword.get(options,
+                             :model,
+                             Application.get_env(:phoenix_users, :user_model))
     # TODO: Handle error returns with these
     {:ok, user_model} = get_user_model_atom(user_model)
 
-    changeset_function = Map.get(options,
-                                 :changeset,
-                                 Application.get_env(:phoenix_users, :create_user_changset, "changeset"))
+    changeset_function = Keyword.get(options,
+                                     :changeset,
+                                     Application.get_env(:phoenix_users, :create_user_changset, "changeset"))
     {:ok, changeset_function} = get_changeset_function_atom(changeset_function)
     #user_model = Application.get_env(:phoenix_users, :user_model)
 
@@ -74,8 +75,8 @@ defmodule Mix.Tasks.CreateUser do
     cond do
       is_bitstring(changeset_function) ->
         {:ok, String.to_atom(changeset_function)}
-      is_atom(changset_function) ->
-        {:ok, changeset_function)
+      is_atom(changeset_function) ->
+        {:ok, changeset_function}
       true ->
         {:error, changeset_function}
     end
