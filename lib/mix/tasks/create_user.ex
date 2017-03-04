@@ -2,13 +2,6 @@ defmodule Mix.Tasks.CreateUser do
   use Mix.Task
   import Mix.Ecto
 
-  # TODO: Allow specifying a specific changeset function to use 
-  # TODO: Custom switches and aliases?  Dynamically determine switches and aliases
-  # or dynamically prompt for required info like django create_user does?
-
-  @switches  [first_name: :string, last_name: :string, email: :string,
-              password: :string, is_active: :boolean, model: :string, changeset: :string]
-  @aliases [f: :first_name, l: :last_name, e: :email, a: :is_active, p: :password]
   @shortdoc "Creates a User in the database"
   def run(args) do
     # Might be a better way, buyt this seems to work
@@ -31,23 +24,21 @@ defmodule Mix.Tasks.CreateUser do
     {:ok, user_model} = get_user_model_atom(user_model)
 
     required = get_required_fields(user_model)
-
-    for required_field <- required do
-      x = IO.gets "write something"
-      options = options ++ [{String.to_atom(required_field), x}]
+    # prompt for any missing required fields and add them to options
+    options = options ++ for required_field <- required, not Keyword.has_key?(options, required_field) do
+      # string to atom stuff here mucking things up
+      x = IO.gets("#{humanize(required_field)}: ") |> String.trim()
+      # assumping required_field is an atom already for now
+      {required_field, x}
     end
 
     changeset_function = Keyword.get(options,
                                      :changeset,
                                      Application.get_env(:phoenix_users, :create_user_changset, "changeset"))
     {:ok, changeset_function} = get_changeset_function_atom(changeset_function)
-    #user_model = Application.get_env(:phoenix_users, :user_model)
 
     #TODO: prompt for any needed data which was not passed on command line
 
-    #IO.inspect(options)
-    #u = user_model.changeset(options)
-    #IO.inspect(u)
 
     #TODO: check user_model and changeset_function for errors as well
     if !list_empty?(errors) do
@@ -57,6 +48,9 @@ defmodule Mix.Tasks.CreateUser do
     end
   end
 
+  @doc """
+  Check the user model for list of required fields as atoms and return it
+  """
   def get_required_fields(user_model) do 
     # prompt for any required data which is not already passed in
     # TODO: is it possible to detecth required fields from the schema rather than
@@ -68,22 +62,13 @@ defmodule Mix.Tasks.CreateUser do
         []
     end
   end
+
   @doc """
   Take an atom or bitstring and return the atom representation and status.
   """
-  def get_user_model_atom(user_model) do
-    cond do
-      is_bitstring(user_model) ->
-        # This can also work using String.to_atom() but requires
-        # testing to see if the string starts with Elixir. already
-        # and prepending that if it does not.
-        {:ok, Module.concat(String.split(user_model, "."))}
-      is_atom(user_model) ->
-        {:ok, user_model}
-      true ->
-        {:error, user_model}
-    end
-  end
+  def get_user_model_atom(bitstring) when is_bitstring(bitstring),  do: {:ok, Module.concat(String.split(bitstring, "."))}
+  def get_user_model_atom(atom) when is_atom(atom), do: {:ok, atom}
+  def get_user_model_atom(user_model), do: {:error, user_model}
 
   @doc """
   Takes the changeset function name as a parameter and returns
@@ -100,11 +85,11 @@ defmodule Mix.Tasks.CreateUser do
     end
   end
 
+  @doc """
+  Helper to test if a list is empty or not
+  """
   def list_empty?([]), do: true
-
-  def list_empty?(list) when is_list(list) do
-      false
-  end
+  def list_empty?(list) when is_list(list), do: false
 
   def print_help() do
   end
@@ -114,17 +99,12 @@ defmodule Mix.Tasks.CreateUser do
   end
 
   def create_user(options, repo, user_model, changset_function) do
-    # if not for the password/password confirmation we could just use
-    # Enum.into(options)
-    # the !options[:is_active] makes a default to true even if not specified
-    params = %{
-      :first_name => options[:first_name],
-      :last_name => options[:last_name],
-      :email => options[:email],
-      :is_activte => !options[:is_active],
-      :password => options[:password],
-      :password_confirmation => options[:password]
-    }
+    #convert options keyword list into map needed for changset, but make some assumptions for now
+    # around is_active and  password
+    params = Enum.into(options, %{})
+      |> Map.put(:password, options[:password])
+      |> Map.put(:password_confirmation, options[:password])
+      |> Map.put(:is_active, !options[:is_active])
     changeset = apply(user_model, changset_function, [struct(user_model), params])
     #changeset = User.changeset(%User{}, params)
 
@@ -141,5 +121,20 @@ defmodule Mix.Tasks.CreateUser do
         end
         #        IO.inspect(changeset)
     end
+  end
+
+  def humanize(atom) when is_atom(atom) do
+     humanize(Atom.to_string(atom))
+  end
+  
+  def humanize(bin) when is_binary(bin) do
+    bin =
+      if String.ends_with?(bin, "_id") do
+        binary_part(bin, 0, byte_size(bin) - 3)
+      else
+        bin
+      end
+      
+    bin |> String.replace("_", " ") |> String.capitalize
   end
 end
