@@ -17,13 +17,9 @@ defmodule Mix.Tasks.CreateUser do
     ensure_started(repo, [])
     {options, _, errors} = OptionParser.parse(args, switches: @switches, aliases: @aliases)
 
-    user_model = Keyword.get(options,
-                             :model,
-                             Application.get_env(:phoenix_users, :user_model))
-    # TODO: Handle error returns with these
-    {:ok, user_model} = get_user_model_atom(user_model)
+    {:ok, user_model} = PhoenixUsers.get_user_model()
 
-    required = get_required_fields(user_model)
+    required = PhoenixUsers.get_required_fields(user_model)
     # prompt for any missing required fields and add them to options
     options = options ++ for required_field <- required, not Keyword.has_key?(options, required_field) do
       # string to atom stuff here mucking things up
@@ -37,9 +33,6 @@ defmodule Mix.Tasks.CreateUser do
                                      Application.get_env(:phoenix_users, :create_user_changset, "changeset"))
     {:ok, changeset_function} = get_changeset_function_atom(changeset_function)
 
-    #TODO: prompt for any needed data which was not passed on command line
-
-
     #TODO: check user_model and changeset_function for errors as well
     if !list_empty?(errors) do
       print_errors(errors)
@@ -47,28 +40,6 @@ defmodule Mix.Tasks.CreateUser do
       create_user(options, repo, user_model, changeset_function)
     end
   end
-
-  @doc """
-  Check the user model for list of required fields as atoms and return it
-  """
-  def get_required_fields(user_model) do 
-    # prompt for any required data which is not already passed in
-    # TODO: is it possible to detecth required fields from the schema rather than
-    # making the developer specify them on the model?
-    try do
-      user_model.required_fields
-    rescue
-      UndefinedFunctionError ->
-        []
-    end
-  end
-
-  @doc """
-  Take an atom or bitstring and return the atom representation and status.
-  """
-  def get_user_model_atom(bitstring) when is_bitstring(bitstring),  do: {:ok, Module.concat(String.split(bitstring, "."))}
-  def get_user_model_atom(atom) when is_atom(atom), do: {:ok, atom}
-  def get_user_model_atom(user_model), do: {:error, user_model}
 
   @doc """
   Takes the changeset function name as a parameter and returns
@@ -105,6 +76,7 @@ defmodule Mix.Tasks.CreateUser do
       |> Map.put(:password, options[:password])
       |> Map.put(:password_confirmation, options[:password])
       |> Map.put(:is_active, !options[:is_active])
+    IO.inspect user_model
     changeset = apply(user_model, changset_function, [struct(user_model), params])
     #changeset = User.changeset(%User{}, params)
 
