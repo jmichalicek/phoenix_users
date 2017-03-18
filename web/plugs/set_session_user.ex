@@ -4,8 +4,8 @@ defmodule PhoenixUsers.Plugs.SessionUser do
   and is active.
   """
   import Plug.Conn
-  # TODO: specify user model in settings
-  alias App.User
+  # TODO: Test out custom using macro for getting at this
+  #alias PhoenixUsers.User
 
   def init(opts) do
     Keyword.fetch!(opts, :repo)
@@ -25,7 +25,8 @@ defmodule PhoenixUsers.Plugs.SessionUser do
       _ ->
         user_id = get_session(conn, :user_id)
 
-      user = user_id && repo.get_by(User, id: user_id, is_active: true)
+      {:ok, user_model} = PhoenixUsers.get_user_model()
+      user = user_id && repo.get_by(user_model, id: user_id, is_active: true)
       assign(conn, :current_user, user)
     end
   end
