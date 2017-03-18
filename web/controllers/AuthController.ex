@@ -1,10 +1,14 @@
 defmodule PhoenixUsers.AuthController do
   @moduledoc """
   Handle login/logout/auth stuff using ueberauth for ueberberauth_identity
+
+  TODO: Does it make sense to generate this file from a template, like phoenix does
+  for many things, but by looking at the current app and module.  Not sure how
+  that would play with upgrades vs just having the code here.
   """
 
   #TODO:Allow specifying App.Web, : controller dynamically
-  #use App.Web, :controller
+  use PhoenixUsers.Web, :controller
   plug Ueberauth
 
   alias Ueberauth.Strategy.Helpers
@@ -33,10 +37,17 @@ defmodule PhoenixUsers.AuthController do
 
   @doc """
   Handle Ueberauth login attempt using username/password (identity strategy)
+
+  Currently assumes that email is used as the username and hashed password is
+  stored in a field called `hashed_password`
   """
-  #def callback(conn, %{"auth" => %{"email" => email, "password" => password}}) do
   def callback(%{assigns: %{ueberauth_auth: auth}} = conn, _params) do 
-    user = Repo.get_by(User, email: auth.uid, is_active: true)
+
+    repo = Application.get_env(:phoenix_users,
+                               :ecto_repo,
+                               Enum.at(Mix.Ecto.parse_repo(args), 0))
+    user_model = PhoenixUsers.get_user_model
+    user = repo.get_by(user_model, email: auth.uid, is_active: true)
     credentials = auth.credentials
     # location of password seems a bit odd, but that's where it is.
     if user && checkpw(credentials.other.password, user.hashed_password) do
