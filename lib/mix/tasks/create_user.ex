@@ -76,7 +76,6 @@ defmodule Mix.Tasks.CreateUser do
       |> Map.put(:password, options[:password])
       |> Map.put(:password_confirmation, options[:password])
       |> Map.put(:is_active, !options[:is_active])
-    IO.inspect user_model
     changeset = apply(user_model, changset_function, [struct(user_model), params])
     #changeset = User.changeset(%User{}, params)
 
