@@ -5,9 +5,7 @@ defmodule PhoenixUsers.Helpers.Auth do
   of a Plug directly.
   """
 
-  # TODO: use PhoenixUsers.Web with dynamic stuff there
-  # or dynamically App.Web, :controller from settings
-  use App.Web, :controller
+  use PhoenixUsers.Web, :controller
 
 
   @doc """
