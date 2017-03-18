@@ -31,6 +31,12 @@ defmodule PhoenixUsers.Web do
     apply(module, :controller, [])
   end
 
+  def view do
+    {module, []} = Keyword.get(Mix.Project.get().application(), :mod)
+    module = Module.concat(module, :Web)
+    apply(module, :view, [])
+  end
+
   @doc """
   When used, dispatch to the appropriate controller/view/etc.
   """
